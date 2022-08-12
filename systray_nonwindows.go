@@ -1,5 +1,5 @@
+//go:build !windows
 // +build !windows
-// go:build !windows
 
 package systray
 
@@ -10,8 +10,9 @@ import (
 	"unsafe"
 )
 
-func registerSystray() {
+func registerSystray() error {
 	C.registerSystray()
+	return nil
 }
 
 func nativeLoop() {
@@ -25,23 +26,26 @@ func quit() {
 // SetIcon sets the systray icon.
 // iconBytes should be the content of .ico for windows and .ico/.jpg/.png
 // for other platforms.
-func SetIcon(iconBytes []byte) {
+func SetIcon(iconBytes []byte) error {
 	cstr := (*C.char)(unsafe.Pointer(&iconBytes[0]))
 	C.setIcon(cstr, (C.int)(len(iconBytes)), false)
+	return nil
 }
 
 // SetTitle sets the systray title, only available on Mac and Linux.
-func SetTitle(title string) {
+func SetTitle(title string) error {
 	C.setTitle(C.CString(title))
+	return nil
 }
 
 // SetTooltip sets the systray tooltip to display on mouse hover of the tray icon,
 // only available on Mac and Windows.
-func SetTooltip(tooltip string) {
+func SetTooltip(tooltip string) error {
 	C.setTooltip(C.CString(tooltip))
+	return nil
 }
 
-func addOrUpdateMenuItem(item *MenuItem) {
+func addOrUpdateMenuItem(item *MenuItem) error {
 	var disabled C.short
 	if item.disabled {
 		disabled = 1
@@ -67,22 +71,26 @@ func addOrUpdateMenuItem(item *MenuItem) {
 		checked,
 		isCheckable,
 	)
+	return nil
 }
 
-func addSeparator(id uint32) {
+func addSeparator(id uint32) error {
 	C.add_separator(C.int(id))
+	return nil
 }
 
-func hideMenuItem(item *MenuItem) {
+func hideMenuItem(item *MenuItem) error {
 	C.hide_menu_item(
 		C.int(item.id),
 	)
+	return nil
 }
 
-func showMenuItem(item *MenuItem) {
+func showMenuItem(item *MenuItem) error {
 	C.show_menu_item(
 		C.int(item.id),
 	)
+	return nil
 }
 
 //export systray_ready

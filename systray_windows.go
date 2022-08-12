@@ -1,3 +1,4 @@
+//go:build windows
 // +build windows
 
 package systray
@@ -5,6 +6,7 @@ package systray
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -764,18 +766,17 @@ func (t *winTray) iconToBitmap(hIcon windows.Handle) (windows.Handle, error) {
 	return windows.Handle(hMemBmp), nil
 }
 
-func registerSystray() {
+func registerSystray() error {
 	if err := wt.initInstance(); err != nil {
-		log.Errorf("Unable to init instance: %v", err)
-		return
+		return fmt.Errorf("unable to init instance: %v", err)
 	}
 
 	if err := wt.createMenu(); err != nil {
-		log.Errorf("Unable to create menu: %v", err)
-		return
+		return fmt.Errorf("unable to create menu: %v", err)
 	}
 
 	systrayReady()
+	return nil
 }
 
 func nativeLoop() {
@@ -835,16 +836,15 @@ func iconBytesToFilePath(iconBytes []byte) (string, error) {
 // SetIcon sets the systray icon.
 // iconBytes should be the content of .ico for windows and .ico/.jpg/.png
 // for other platforms.
-func SetIcon(iconBytes []byte) {
+func SetIcon(iconBytes []byte) error {
 	iconFilePath, err := iconBytesToFilePath(iconBytes)
 	if err != nil {
-		log.Errorf("Unable to write icon data to temp file: %v", err)
-		return
+		return fmt.Errorf("unable to write icon data to temp file: %v", err)
 	}
-	if err := wt.setIcon(iconFilePath); err != nil {
-		log.Errorf("Unable to set icon: %v", err)
-		return
+	if err = wt.setIcon(iconFilePath); err != nil {
+		return fmt.Errorf("unable to set icon: %v", err)
 	}
+	return nil
 }
 
 // SetTemplateIcon sets the systray icon as a template icon (on macOS), falling back
@@ -856,8 +856,9 @@ func SetTemplateIcon(templateIconBytes []byte, regularIconBytes []byte) {
 }
 
 // SetTitle sets the systray title, only available on Mac and Linux.
-func SetTitle(title string) {
+func SetTitle(title string) error {
 	// do nothing
+	return nil
 }
 
 func (item *MenuItem) parentId() uint32 {
@@ -869,23 +870,20 @@ func (item *MenuItem) parentId() uint32 {
 
 // SetIcon sets the icon of a menu item. Only works on macOS and Windows.
 // iconBytes should be the content of .ico/.jpg/.png
-func (item *MenuItem) SetIcon(iconBytes []byte) {
+func (item *MenuItem) SetIcon(iconBytes []byte) error {
 	iconFilePath, err := iconBytesToFilePath(iconBytes)
 	if err != nil {
-		log.Errorf("Unable to write icon data to temp file: %v", err)
-		return
+		return fmt.Errorf("unable to write icon data to temp file: %v", err)
 	}
 
 	h, err := wt.loadIconFrom(iconFilePath)
 	if err != nil {
-		log.Errorf("Unable to load icon from temp file: %v", err)
-		return
+		return fmt.Errorf("unable to load icon from temp file: %v", err)
 	}
 
 	h, err = wt.iconToBitmap(h)
 	if err != nil {
-		log.Errorf("Unable to convert icon to bitmap: %v", err)
-		return
+		return fmt.Errorf("unable to convert icon to bitmap: %v", err)
 	}
 	wt.muMenuItemIcons.Lock()
 	wt.menuItemIcons[uint32(item.id)] = h
@@ -893,52 +891,53 @@ func (item *MenuItem) SetIcon(iconBytes []byte) {
 
 	err = wt.addOrUpdateMenuItem(uint32(item.id), item.parentId(), item.title, item.disabled, item.checked)
 	if err != nil {
-		log.Errorf("Unable to addOrUpdateMenuItem: %v", err)
-		return
+		return fmt.Errorf("unable to addOrUpdateMenuItem: %v", err)
 	}
+
+	return nil
 }
 
 // SetTooltip sets the systray tooltip to display on mouse hover of the tray icon,
 // only available on Mac and Windows.
-func SetTooltip(tooltip string) {
+func SetTooltip(tooltip string) error {
 	if err := wt.setTooltip(tooltip); err != nil {
-		log.Errorf("Unable to set tooltip: %v", err)
-		return
+		return fmt.Errorf("unable to set tooltip: %v", err)
 	}
+	return nil
 }
 
-func addOrUpdateMenuItem(item *MenuItem) {
+func addOrUpdateMenuItem(item *MenuItem) error {
 	err := wt.addOrUpdateMenuItem(uint32(item.id), item.parentId(), item.title, item.disabled, item.checked)
 	if err != nil {
-		log.Errorf("Unable to addOrUpdateMenuItem: %v", err)
-		return
+		return fmt.Errorf("unable to addOrUpdateMenuItem: %v", err)
 	}
+	return nil
 }
 
 // SetTemplateIcon sets the icon of a menu item as a template icon (on macOS). On Windows, it
 // falls back to the regular icon bytes and on Linux it does nothing.
 // templateIconBytes and regularIconBytes should be the content of .ico for windows and
 // .ico/.jpg/.png for other platforms.
-func (item *MenuItem) SetTemplateIcon(templateIconBytes []byte, regularIconBytes []byte) {
-	item.SetIcon(regularIconBytes)
+func (item *MenuItem) SetTemplateIcon(templateIconBytes []byte, regularIconBytes []byte) error {
+	return item.SetIcon(regularIconBytes)
 }
 
-func addSeparator(id uint32) {
+func addSeparator(id uint32) error {
 	err := wt.addSeparatorMenuItem(id, 0)
 	if err != nil {
-		log.Errorf("Unable to addSeparator: %v", err)
-		return
+		return fmt.Errorf("unable to addSeparator: %v", err)
 	}
+	return nil
 }
 
-func hideMenuItem(item *MenuItem) {
+func hideMenuItem(item *MenuItem) error {
 	err := wt.hideMenuItem(uint32(item.id), item.parentId())
 	if err != nil {
-		log.Errorf("Unable to hideMenuItem: %v", err)
-		return
+		return fmt.Errorf("unable to hideMenuItem: %v", err)
 	}
+	return nil
 }
 
-func showMenuItem(item *MenuItem) {
-	addOrUpdateMenuItem(item)
+func showMenuItem(item *MenuItem) error {
+	return addOrUpdateMenuItem(item)
 }

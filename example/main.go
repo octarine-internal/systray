@@ -23,7 +23,10 @@ func onReady() {
 	systray.SetTemplateIcon(icon.Data, icon.Data)
 	systray.SetTitle("Awesome App")
 	systray.SetTooltip("Lantern")
-	mQuitOrig := systray.AddMenuItem("Quit", "Quit the whole app")
+	mQuitOrig, err := systray.AddMenuItem("Quit", "Quit the whole app")
+	if err != nil {
+		panic(err)
+	}
 	go func() {
 		<-mQuitOrig.ClickedCh
 		fmt.Println("Requesting quit")
@@ -34,29 +37,63 @@ func onReady() {
 	// We can manipulate the systray in other goroutines
 	go func() {
 		systray.SetTemplateIcon(icon.Data, icon.Data)
-		systray.SetTitle("Awesome App")
-		systray.SetTooltip("Pretty awesome棒棒嗒")
-		mChange := systray.AddMenuItem("Change Me", "Change Me")
-		mChecked := systray.AddMenuItemCheckbox("Unchecked", "Check Me", true)
-		mEnabled := systray.AddMenuItem("Enabled", "Enabled")
+		if err = systray.SetTitle("Awesome App"); err != nil {
+			panic(err)
+		}
+		if err = systray.SetTooltip("Pretty awesome棒棒嗒"); err != nil {
+			panic(err)
+		}
+		mChange, err := systray.AddMenuItem("Change Me", "Change Me")
+		if err != nil {
+			panic(err)
+		}
+		mChecked, err := systray.AddMenuItemCheckbox("Unchecked", "Check Me", true)
+		if err != nil {
+			panic(err)
+		}
+		mEnabled, err := systray.AddMenuItem("Enabled", "Enabled")
+		if err != nil {
+			panic(err)
+		}
 		// Sets the icon of a menu item. Only available on Mac.
 		mEnabled.SetTemplateIcon(icon.Data, icon.Data)
 
 		systray.AddMenuItem("Ignored", "Ignored")
 
-		subMenuTop := systray.AddMenuItem("SubMenuTop", "SubMenu Test (top)")
-		subMenuMiddle := subMenuTop.AddSubMenuItem("SubMenuMiddle", "SubMenu Test (middle)")
-		subMenuBottom := subMenuMiddle.AddSubMenuItemCheckbox("SubMenuBottom - Toggle Panic!", "SubMenu Test (bottom) - Hide/Show Panic!", false)
-		subMenuBottom2 := subMenuMiddle.AddSubMenuItem("SubMenuBottom - Panic!", "SubMenu Test (bottom)")
+		subMenuTop, err := systray.AddMenuItem("SubMenuTop", "SubMenu Test (top)")
+		if err != nil {
+			panic(err)
+		}
+		subMenuMiddle, err := subMenuTop.AddSubMenuItem("SubMenuMiddle", "SubMenu Test (middle)")
+		if err != nil {
+			panic(err)
+		}
+		subMenuBottom, err := subMenuMiddle.AddSubMenuItemCheckbox("SubMenuBottom - Toggle Panic!", "SubMenu Test (bottom) - Hide/Show Panic!", false)
+		if err != nil {
+			panic(err)
+		}
+		subMenuBottom2, err := subMenuMiddle.AddSubMenuItem("SubMenuBottom - Panic!", "SubMenu Test (bottom)")
+		if err != nil {
+			panic(err)
+		}
 
-		mUrl := systray.AddMenuItem("Open UI", "my home")
-		mQuit := systray.AddMenuItem("退出", "Quit the whole app")
+		mUrl, err := systray.AddMenuItem("Open UI", "my home")
+		if err != nil {
+			panic(err)
+		}
+		mQuit, err := systray.AddMenuItem("退出", "Quit the whole app")
+		if err != nil {
+			panic(err)
+		}
 
 		// Sets the icon of a menu item. Only available on Mac.
 		mQuit.SetIcon(icon.Data)
 
 		systray.AddSeparator()
-		mToggle := systray.AddMenuItem("Toggle", "Toggle the Quit button")
+		mToggle, err := systray.AddMenuItem("Toggle", "Toggle the Quit button")
+		if err != nil {
+			panic(err)
+		}
 		shown := true
 		toggle := func() {
 			if shown {

@@ -24,10 +24,6 @@ var (
 	quitOnce  sync.Once
 )
 
-func init() {
-	runtime.LockOSThread()
-}
-
 // MenuItem is used to keep track each menu item of systray.
 // Don't create it directly, use the one systray.AddMenuItem() returned
 type MenuItem struct {
@@ -73,9 +69,14 @@ func newMenuItem(title string, tooltip string, parent *MenuItem) *MenuItem {
 
 // Run initializes GUI and starts the event loop, then invokes the onReady
 // callback. It blocks until systray.Quit() is called.
-func Run(onReady func(), onExit func()) {
-	Register(onReady, onExit)
+// It should be called at the very beginning of main() to lock at main thread.
+func Run(onReady func(), onExit func()) error {
+	runtime.LockOSThread()
+	if err := Register(onReady, onExit); err != nil {
+		return err
+	}
 	nativeLoop()
+	return nil
 }
 
 // Register initializes GUI and registers the callbacks but relies on the
@@ -83,7 +84,7 @@ func Run(onReady func(), onExit func()) {
 // needs to show other UI elements, for example, webview.
 // To overcome some OS weirdness, On macOS versions before Catalina, calling
 // this does exactly the same as Run().
-func Register(onReady func(), onExit func()) {
+func Register(onReady func(), onExit func()) error {
 	if onReady == nil {
 		systrayReady = func() {}
 	} else {
@@ -103,7 +104,8 @@ func Register(onReady func(), onExit func()) {
 		onExit = func() {}
 	}
 	systrayExit = onExit
-	registerSystray()
+	return registerSystray()
+
 }
 
 // Quit the systray
@@ -114,58 +116,54 @@ func Quit() {
 // AddMenuItem adds a menu item with the designated title and tooltip.
 // It can be safely invoked from different goroutines.
 // Created menu items are checkable on Windows and OSX by default. For Linux you have to use AddMenuItemCheckbox
-func AddMenuItem(title string, tooltip string) *MenuItem {
+func AddMenuItem(title string, tooltip string) (*MenuItem, error) {
 	item := newMenuItem(title, tooltip, nil)
-	item.update()
-	return item
+	return item, item.update()
 }
 
 // AddMenuItemCheckbox adds a menu item with the designated title and tooltip and a checkbox for Linux.
 // It can be safely invoked from different goroutines.
 // On Windows and OSX this is the same as calling AddMenuItem
-func AddMenuItemCheckbox(title string, tooltip string, checked bool) *MenuItem {
+func AddMenuItemCheckbox(title string, tooltip string, checked bool) (*MenuItem, error) {
 	item := newMenuItem(title, tooltip, nil)
 	item.isCheckable = true
 	item.checked = checked
-	item.update()
-	return item
+	return item, item.update()
 }
 
 // AddSeparator adds a separator bar to the menu
-func AddSeparator() {
-	addSeparator(atomic.AddUint32(&currentID, 1))
+func AddSeparator() error {
+	return addSeparator(atomic.AddUint32(&currentID, 1))
 }
 
 // AddSubMenuItem adds a nested sub-menu item with the designated title and tooltip.
 // It can be safely invoked from different goroutines.
 // Created menu items are checkable on Windows and OSX by default. For Linux you have to use AddSubMenuItemCheckbox
-func (item *MenuItem) AddSubMenuItem(title string, tooltip string) *MenuItem {
+func (item *MenuItem) AddSubMenuItem(title string, tooltip string) (*MenuItem, error) {
 	child := newMenuItem(title, tooltip, item)
-	child.update()
-	return child
+	return child, child.update()
 }
 
 // AddSubMenuItemCheckbox adds a nested sub-menu item with the designated title and tooltip and a checkbox for Linux.
 // It can be safely invoked from different goroutines.
 // On Windows and OSX this is the same as calling AddSubMenuItem
-func (item *MenuItem) AddSubMenuItemCheckbox(title string, tooltip string, checked bool) *MenuItem {
+func (item *MenuItem) AddSubMenuItemCheckbox(title string, tooltip string, checked bool) (*MenuItem, error) {
 	child := newMenuItem(title, tooltip, item)
 	child.isCheckable = true
 	child.checked = checked
-	child.update()
-	return child
+	return child, child.update()
 }
 
 // SetTitle set the text to display on a menu item
-func (item *MenuItem) SetTitle(title string) {
+func (item *MenuItem) SetTitle(title string) error {
 	item.title = title
-	item.update()
+	return item.update()
 }
 
 // SetTooltip set the tooltip to show when mouse hover
-func (item *MenuItem) SetTooltip(tooltip string) {
+func (item *MenuItem) SetTooltip(tooltip string) error {
 	item.tooltip = tooltip
-	item.update()
+	return item.update()
 }
 
 // Disabled checks if the menu item is disabled
@@ -174,25 +172,25 @@ func (item *MenuItem) Disabled() bool {
 }
 
 // Enable a menu item regardless if it's previously enabled or not
-func (item *MenuItem) Enable() {
+func (item *MenuItem) Enable() error {
 	item.disabled = false
-	item.update()
+	return item.update()
 }
 
 // Disable a menu item regardless if it's previously disabled or not
-func (item *MenuItem) Disable() {
+func (item *MenuItem) Disable() error {
 	item.disabled = true
-	item.update()
+	return item.update()
 }
 
 // Hide hides a menu item
-func (item *MenuItem) Hide() {
-	hideMenuItem(item)
+func (item *MenuItem) Hide() error {
+	return hideMenuItem(item)
 }
 
 // Show shows a previously hidden menu item
-func (item *MenuItem) Show() {
-	showMenuItem(item)
+func (item *MenuItem) Show() error {
+	return showMenuItem(item)
 }
 
 // Checked returns if the menu item has a check mark
@@ -201,23 +199,23 @@ func (item *MenuItem) Checked() bool {
 }
 
 // Check a menu item regardless if it's previously checked or not
-func (item *MenuItem) Check() {
+func (item *MenuItem) Check() error {
 	item.checked = true
-	item.update()
+	return item.update()
 }
 
 // Uncheck a menu item regardless if it's previously unchecked or not
-func (item *MenuItem) Uncheck() {
+func (item *MenuItem) Uncheck() error {
 	item.checked = false
-	item.update()
+	return item.update()
 }
 
 // update propagates changes on a menu item to systray
-func (item *MenuItem) update() {
+func (item *MenuItem) update() error {
 	menuItemsLock.Lock()
 	menuItems[item.id] = item
 	menuItemsLock.Unlock()
-	addOrUpdateMenuItem(item)
+	return addOrUpdateMenuItem(item)
 }
 
 func systrayMenuItemSelected(id uint32) {

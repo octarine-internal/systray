@@ -15,10 +15,11 @@ import (
 var (
 	log = golog.LoggerFor("systray")
 
-	systrayReady  func()
-	systrayExit   func()
-	menuItems     = make(map[uint32]*MenuItem)
-	menuItemsLock sync.RWMutex
+	systrayReady       func()
+	systrayExit        func()
+	systrayDoubleClick func()
+	menuItems          = make(map[uint32]*MenuItem)
+	menuItemsLock      sync.RWMutex
 
 	currentID = uint32(0)
 	quitOnce  sync.Once
@@ -111,6 +112,19 @@ func Register(onReady func(), onExit func()) error {
 // Quit the systray
 func Quit() {
 	quitOnce.Do(quit)
+}
+
+// SetOnDoubleClick sets a callback function that will be called when
+// the user double-clicks the tray icon
+func SetOnDoubleClick(fn func()) {
+	systrayDoubleClick = fn
+}
+
+// onDoubleClick is called internally when double-click is detected
+func onDoubleClick() {
+	if systrayDoubleClick != nil {
+		systrayDoubleClick()
+	}
 }
 
 // AddMenuItem adds a menu item with the designated title and tooltip.

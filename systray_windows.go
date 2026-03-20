@@ -7,7 +7,6 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -249,12 +248,13 @@ var wt winTray
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms633573(v=vs.85).aspx
 func (t *winTray) wndProc(hWnd windows.Handle, message uint32, wParam, lParam uintptr) (lResult uintptr) {
 	const (
-		WM_RBUTTONUP  = 0x0205
-		WM_LBUTTONUP  = 0x0202
-		WM_COMMAND    = 0x0111
-		WM_ENDSESSION = 0x0016
-		WM_CLOSE      = 0x0010
-		WM_DESTROY    = 0x0002
+		WM_RBUTTONUP     = 0x0205
+		WM_LBUTTONUP     = 0x0202
+		WM_LBUTTONDBLCLK = 0x0203
+		WM_COMMAND       = 0x0111
+		WM_ENDSESSION    = 0x0016
+		WM_CLOSE         = 0x0010
+		WM_DESTROY       = 0x0002
 	)
 	switch message {
 	case WM_COMMAND:
@@ -279,7 +279,9 @@ func (t *winTray) wndProc(hWnd windows.Handle, message uint32, wParam, lParam ui
 		systrayExit()
 	case t.wmSystrayMessage:
 		switch lParam {
-		case WM_RBUTTONUP, WM_LBUTTONUP:
+		case WM_LBUTTONDBLCLK:
+			onDoubleClick()
+		case WM_RBUTTONUP:
 			t.showMenu()
 		}
 	case t.wmTaskbarCreated: // on explorer.exe restarts
@@ -824,9 +826,8 @@ func iconBytesToFilePath(iconBytes []byte) (string, error) {
 	bh := md5.Sum(iconBytes)
 	dataHash := hex.EncodeToString(bh[:])
 	iconFilePath := filepath.Join(os.TempDir(), "systray_temp_icon_"+dataHash)
-
 	if _, err := os.Stat(iconFilePath); os.IsNotExist(err) {
-		if err := ioutil.WriteFile(iconFilePath, iconBytes, 0644); err != nil {
+		if err := os.WriteFile(iconFilePath, iconBytes, 0644); err != nil {
 			return "", err
 		}
 	}

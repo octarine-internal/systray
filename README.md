@@ -34,7 +34,7 @@ Note: this package requires cgo, so make sure you set `CGO_ENABLED=1` before bui
 
 ## Try the example app!
 
-Have go v1.12+ or higher installed? Here's an example to get started on macOS:
+Have Go 1.27.1 or higher installed? Here's an example to get started on macOS:
 
 ```sh
 git clone https://github.com/getlantern/systray

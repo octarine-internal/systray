@@ -251,14 +251,29 @@ const WMUserControl = 0x0400 + 2
 
 var userMessageHandler atomic.Pointer[func(wParam, lParam uintptr) uintptr]
 
-// SetUserMessageHandler sets what answers WMUserControl. It runs on the
-// tray's window thread and its result is the message's result; nil removes it.
-func SetUserMessageHandler(handler func(wParam, lParam uintptr) uintptr) {
+var pChangeWindowMessageFilterEx = u32.NewProc("ChangeWindowMessageFilterEx")
+
+// SetUserMessageHandler sets what answers WMUserControl, and lets processes of
+// a lower integrity level send it too: an app running as administrator takes it
+// from an unelevated tool. The handler runs on the tray's window thread and its
+// result is the message's result; nil removes it and closes the message to them
+// again. Call it once the tray is ready.
+func SetUserMessageHandler(handler func(wParam, lParam uintptr) uintptr) error {
+	const (
+		MSGFLT_ALLOW    = 1
+		MSGFLT_DISALLOW = 2
+	)
+	action := uintptr(MSGFLT_ALLOW)
 	if handler == nil {
 		userMessageHandler.Store(nil)
-		return
+		action = MSGFLT_DISALLOW
+	} else {
+		userMessageHandler.Store(&handler)
 	}
-	userMessageHandler.Store(&handler)
+	if r, _, err := pChangeWindowMessageFilterEx.Call(uintptr(wt.window), WMUserControl, action, 0); r == 0 {
+		return fmt.Errorf("ChangeWindowMessageFilterEx: %w", err)
+	}
+	return nil
 }
 
 // WindowProc callback function that processes messages sent to a window.

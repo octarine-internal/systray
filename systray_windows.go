@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"unsafe"
 
@@ -244,6 +245,22 @@ func (t *winTray) setTooltip(src string) error {
 
 var wt winTray
 
+// WMUserControl is the message another process sends to the tray's window
+// (class "SystrayClass") to reach the handler set by SetUserMessageHandler.
+const WMUserControl = 0x0400 + 2
+
+var userMessageHandler atomic.Pointer[func(wParam, lParam uintptr) uintptr]
+
+// SetUserMessageHandler sets what answers WMUserControl. It runs on the
+// tray's window thread and its result is the message's result; nil removes it.
+func SetUserMessageHandler(handler func(wParam, lParam uintptr) uintptr) {
+	if handler == nil {
+		userMessageHandler.Store(nil)
+		return
+	}
+	userMessageHandler.Store(&handler)
+}
+
 // WindowProc callback function that processes messages sent to a window.
 // https://msdn.microsoft.com/en-us/library/windows/desktop/ms633573(v=vs.85).aspx
 func (t *winTray) wndProc(hWnd windows.Handle, message uint32, wParam, lParam uintptr) (lResult uintptr) {
@@ -288,6 +305,10 @@ func (t *winTray) wndProc(hWnd windows.Handle, message uint32, wParam, lParam ui
 		t.muNID.Lock()
 		t.nid.add()
 		t.muNID.Unlock()
+	case WMUserControl:
+		if handler := userMessageHandler.Load(); handler != nil {
+			lResult = (*handler)(wParam, lParam)
+		}
 	default:
 		// Calls the default window procedure to provide default processing for any window messages that an application does not process.
 		// https://msdn.microsoft.com/en-us/library/windows/desktop/ms633572(v=vs.85).aspx

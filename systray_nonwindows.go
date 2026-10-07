@@ -23,6 +23,9 @@ func quit() {
 	C.quit()
 }
 
+// SetUserMessageHandler is a no-op: only the Windows tray has a window to message.
+func SetUserMessageHandler(handler func(wParam, lParam uintptr) uintptr) {}
+
 // SetIcon sets the systray icon.
 // iconBytes should be the content of .ico for windows and .ico/.jpg/.png
 // for other platforms.

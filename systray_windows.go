@@ -311,6 +311,8 @@ func (t *winTray) wndProc(hWnd windows.Handle, message uint32, wParam, lParam ui
 		systrayExit()
 	case t.wmSystrayMessage:
 		switch lParam {
+		case WM_LBUTTONUP:
+			onClick()
 		case WM_LBUTTONDBLCLK:
 			onDoubleClick()
 		case WM_RBUTTONUP:

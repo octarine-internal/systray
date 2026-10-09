@@ -18,6 +18,7 @@ var (
 	systrayReady       func()
 	systrayExit        func()
 	systrayDoubleClick func()
+	systrayClick       func()
 	menuItems          = make(map[uint32]*MenuItem)
 	menuItemsLock      sync.RWMutex
 
@@ -124,6 +125,20 @@ func SetOnDoubleClick(fn func()) {
 func onDoubleClick() {
 	if systrayDoubleClick != nil {
 		systrayDoubleClick()
+	}
+}
+
+// SetOnClick sets a callback function that will be called when the user
+// clicks the tray icon with the left button. A double-click starts with a
+// click, so the callback runs for it too, before the double-click one.
+func SetOnClick(fn func()) {
+	systrayClick = fn
+}
+
+// onClick is called internally when a left click is detected
+func onClick() {
+	if systrayClick != nil {
+		systrayClick()
 	}
 }
 
